@@ -5,11 +5,22 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"net/http"
 	"encoding/json"
 )
 
-type ChannelApiResponse struct {
+type ChannelInfoApi struct {
+	Data ChannelInfo
+	Code int
+}
+
+type ChannelInfo struct {
+	ProgramCount int `json:"program_count"`
+	Name string
+}
+
+type ChannelAudioInfoApi struct {
 	Data []AudioInfo
 	Code int
 	Total int
@@ -35,26 +46,42 @@ func main() {
 		return
 	}
 	channelId := os.Args[1]
-	fmt.Println("Fetching audios of channel " + channelId)
+
+	// get info of the channel
+	channelInfoUrl := GetChannelInfoUrl(channelId)
+	channelInfoResponse, err := http.Get(channelInfoUrl)
+	if err != nil {
+		fmt.Println("Error in fetching JSON")
+	}
+	defer channelInfoResponse.Body.Close()
+	channelInfoBody, err := ioutil.ReadAll(channelInfoResponse.Body)
+	var parsedChannelJson ChannelInfoApi
+	json.Unmarshal(channelInfoBody, &parsedChannelJson)
+	fmt.Println("节目 \"" +  parsedChannelJson.Data.Name + "\" 共有 " + strconv.Itoa(parsedChannelJson.Data.ProgramCount) + " 段音频")
 
 	// request API and parse it
-	infoUrl := GetChannelInfoUrl(channelId)
-	response, err := http.Get(infoUrl)
+	audioInfoUrl := GetChannelAudioInfoUrl(channelId)
+	response, err := http.Get(audioInfoUrl)
 	if err != nil {
 		fmt.Println("Error in fetching JSON")
 	}
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
-	var parsedJson ChannelApiResponse
+	var parsedJson ChannelAudioInfoApi
 	json.Unmarshal(body, &parsedJson)
 
-	for _, audioInfo := range parsedJson.Data {
-		fmt.Println("Downloading " + audioInfo.Name)
+	// download all audios
+	for index, audioInfo := range parsedJson.Data {
+		fmt.Printf("[%2d/%2d] %s\n", index, parsedJson.Total, audioInfo.Name)
 		DownloadFile(audioInfo.Name + ".m4a", GetDownloadUrl(audioInfo.FilePath))
 	}
 }
 
 func GetChannelInfoUrl(channelId string) string {
+	return "http://i.qingting.fm/wapi/channels/" + channelId
+}
+
+func GetChannelAudioInfoUrl(channelId string) string {
 	return "http://i.qingting.fm/wapi/channels/" + channelId + "/programs/page/1/pagesize/250"
 }
 
