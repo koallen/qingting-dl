@@ -1,13 +1,13 @@
 package main
 
 import (
-	"os"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
 	"net/http"
-	"encoding/json"
+	"os"
+	"strconv"
 )
 
 type ChannelInfoApi struct {
@@ -17,27 +17,27 @@ type ChannelInfoApi struct {
 
 type ChannelInfo struct {
 	ProgramCount int `json:"program_count"`
-	Name string
+	Name         string
 }
 
 type ChannelAudioInfoApi struct {
-	Data []AudioInfo
-	Code int
+	Data  []AudioInfo
+	Code  int
 	Total int
 }
 
 type AudioInfo struct {
-	FilePath string `json:"file_path"`
-	Name string
-	ResId int `json:"res_id"`
+	FilePath   string `json:"file_path"`
+	Name       string
+	ResId      int    `json:"res_id"`
 	UpdateTime string `json:"update_time"`
-	Duration int
-	Playcount string
-	Id int
-	Desc string
-	ChannelId string `json:"channel_id"`
-	Type string
-	ImgUrl string `json:"img_url"`
+	Duration   int
+	Playcount  string
+	Id         int
+	Desc       string
+	ChannelId  string `json:"channel_id"`
+	Type       string
+	ImgUrl     string `json:"img_url"`
 }
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 	channelInfoBody, err := ioutil.ReadAll(channelInfoResponse.Body)
 	var parsedChannelJson ChannelInfoApi
 	json.Unmarshal(channelInfoBody, &parsedChannelJson)
-	fmt.Println("节目 \"" +  parsedChannelJson.Data.Name + "\" 共有 " + strconv.Itoa(parsedChannelJson.Data.ProgramCount) + " 段音频")
+	fmt.Println("节目 \"" + parsedChannelJson.Data.Name + "\" 共有 " + strconv.Itoa(parsedChannelJson.Data.ProgramCount) + " 段音频")
 
 	// request API and parse it
 	audioInfoUrl := GetChannelAudioInfoUrl(channelId)
@@ -73,7 +73,7 @@ func main() {
 	// download all audios
 	for index, audioInfo := range parsedJson.Data {
 		fmt.Printf("[%2d/%2d] %s\n", index, parsedJson.Total, audioInfo.Name)
-		DownloadFile(audioInfo.Name + ".m4a", GetDownloadUrl(audioInfo.FilePath))
+		DownloadFile(audioInfo.Name+".m4a", GetDownloadUrl(audioInfo.FilePath))
 	}
 }
 
@@ -96,7 +96,7 @@ func GetDownloadUrl(filePath string) string {
 func DownloadFile(filename string, url string) error {
 	// Create the file
 	out, err := os.Create(filename)
-	if err != nil  {
+	if err != nil {
 		return err
 	}
 	defer out.Close()
@@ -110,7 +110,7 @@ func DownloadFile(filename string, url string) error {
 
 	// Writer the body to file
 	_, err = io.Copy(out, resp.Body)
-	if err != nil  {
+	if err != nil {
 		return err
 	}
 
