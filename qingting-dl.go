@@ -52,6 +52,7 @@ func main() {
 	channelInfoResponse, err := http.Get(channelInfoUrl)
 	if err != nil {
 		fmt.Println("Error in fetching JSON")
+		return
 	}
 	defer channelInfoResponse.Body.Close()
 	channelInfoBody, err := ioutil.ReadAll(channelInfoResponse.Body)
@@ -64,6 +65,7 @@ func main() {
 	response, err := http.Get(audioInfoUrl)
 	if err != nil {
 		fmt.Println("Error in fetching JSON")
+		return
 	}
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
@@ -71,10 +73,17 @@ func main() {
 	json.Unmarshal(body, &parsedJson)
 
 	// download all audios
-	for index, audioInfo := range parsedJson.Data {
-		fmt.Printf("[%2d/%2d] %s\n", index, parsedJson.Total, audioInfo.Name)
-		DownloadFile(audioInfo.Name+".m4a", GetDownloadUrl(audioInfo.FilePath))
+	downloads := make(chan int)
+	defer close(downloads)
+	for _, audioInfo := range parsedJson.Data {
+		go DownloadFile(audioInfo.Name+".m4a", GetDownloadUrl(audioInfo.FilePath), downloads)
 	}
+
+	for i := 1; i <= len(parsedJson.Data); i++ {
+		<-downloads
+		fmt.Printf("\r进度： %2d/%2d", i, parsedJson.Total);
+	}
+	fmt.Printf("\n");
 }
 
 func GetChannelInfoUrl(channelId string) string {
@@ -93,7 +102,7 @@ func GetDownloadUrl(filePath string) string {
 	return "http://od.qingting.fm/" + filePath
 }
 
-func DownloadFile(filename string, url string) error {
+func DownloadFile(filename string, url string, ch chan int) error {
 	// Create the file
 	out, err := os.Create(filename)
 	if err != nil {
@@ -114,5 +123,6 @@ func DownloadFile(filename string, url string) error {
 		return err
 	}
 
+	ch <- 0
 	return nil
 }
